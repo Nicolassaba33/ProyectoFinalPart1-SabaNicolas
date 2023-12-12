@@ -7,6 +7,10 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("<h1>Product Manager</h1>");
+});
+
 app.use("/api/carts", cartsRouter);
 app.use("/api/products", productRouter);
 

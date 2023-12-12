@@ -1,20 +1,25 @@
 import { Router } from "express";
-import { readDataFromFile, writeDataToFile } from "../utils/historial";
+import { readDataFromFile, writeDataToFile } from "../utils/historial.js";
+import ProductManager from "../ProductManager.js";
 
+const productManager = new ProductManager("../../products.json");
 const productsFilePath = "../../history/products.json";
 const productRouter = Router();
-const products = [];
 let productIdCounter = 1;
 
-productRouter.get("/", (req, res) => {
-  const limit = parseInt(req.query.limit) || products.length;
-  const limitedProducts = products.slice(0, limit);
-  res.send(limitedProducts);
+productRouter.get("/", async (req, res) => {
+  const products = await productManager.getProducts();
+  const { limit } = req.query;
+  if (!limit) {
+    return res.send(products);
+  }
+  const productsLimited = products.slice(0, +limit);
+  res.send(productsLimited);
 });
 
-productRouter.get("/products/:pid", (req, res) => {
+productRouter.get("/products/:pid", async (req, res) => {
   const productId = req.params.pid;
-  const product = product.find((p) => p.id === productId);
+  const product = await productManager.getProductById(productId);
 
   if (product) {
     res.send(product);
@@ -23,7 +28,7 @@ productRouter.get("/products/:pid", (req, res) => {
   }
 });
 
-productRouter.post("/", (req, res) => {
+productRouter.post("/", async (req, res) => {
   const {
     title,
     description,
@@ -41,7 +46,7 @@ productRouter.post("/", (req, res) => {
       .send("Todos los campos obligatorios deben ser proporcionados");
   }
 
-  const id = productIdCounter++;
+  const id = await productManager.getId();
 
   const newProduct = {
     id,
@@ -55,42 +60,32 @@ productRouter.post("/", (req, res) => {
     thumbnails,
   };
 
-  products.push(newProduct);
-  writeDataToFile(productsFilePath, products);
+  await productManager.addProduct(newProduct);
   res.status(201).send(newProduct);
 });
 
-productRouter.put("/:pid", (req, res) => {
+productRouter.put("/:pid", async (req, res) => {
   const productId = parseInt(req.params.pid);
   const updatedProductData = req.body;
 
-  const productIndex = product.findIndex((p) => p.id === productId);
-
-  if (productIndex !== -1) {
-    products[productIndex] = {
-      ...products[productIndex],
-      ...updatedProductData,
-    };
-    writeDataToFile(productsFilePath, products);
-    res.send(products[productIndex]);
-  } else {
+  try {
+    const updatedProduct = await productManager.updateProduct(
+      productId,
+      updatedProductData
+    );
+    res.send(updatedProduct);
+  } catch (error) {
     res.status(404).send("Producto no encontrado");
   }
 });
 
-productRouter.delete("/:pid", (req, res) => {
-  const productId = parseInt(req.params.pid);
-
-  const updatedProducts = products.filter((p) => p.id !== productId);
-
-  if (updatedProducts.length < products.length) {
-    products.length = 0;
-    products.push(...updatedProducts);
-    writeDataToFile(productsFilePath, products);
-    res.send("Producto eliminado correctamente");
-  } else {
-    res.status(404).send("Producto no encontrado");
+productRouter.delete("/:pid", async (req, res) => {
+  const { pId } = req.params;
+  const productDeleted = await productManager.deleteProduct(pId);
+  if (!productDeleted) {
+    return res.status(404).send({ message: "product not found" });
   }
+  res.send({ message: "product deleted" });
 });
 
 export default productRouter;
