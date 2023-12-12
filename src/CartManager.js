@@ -1,4 +1,3 @@
-import { error } from "console";
 import fs from "fs";
 
 class cartManager {
@@ -9,7 +8,7 @@ class cartManager {
   async getCarts() {
     try {
       const data = await fs.promises.readFile(this.path, "utf-8");
-      return (carts = JSON.parse(data));
+      return JSON.parse(data);
     } catch (error) {
       console.log(error);
       return [];

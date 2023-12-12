@@ -1,73 +1,62 @@
+// carts.routes.js
+
 import { Router } from "express";
 import CartManager from "../CartManager.js";
 
-const cartManager = new CartManager("./src/Cart.json");
-
+const cartManager = new CartManager("./Cart.json");
 const cartsRouter = Router();
-let cartIdCounter = 1;
 
 cartsRouter.get("/", async (req, res) => {
   try {
     const carts = await cartManager.getCarts();
-    res.send(carts);
+    res.json(carts);
   } catch (error) {
-    res.status(500).send("Error obteniendo carritos");
+    console.error("Error getting carts:", error);
+    res.status(500).send("Internal Server Error");
   }
 });
 
 cartsRouter.post("/", async (req, res) => {
-  const cartAdded = await cartManager.addCart();
-  if (!cartAdded) {
-    return res.status(400).send({ message: "error: cart not added" });
+  try {
+    const cartAdded = await cartManager.addCart();
+    if (!cartAdded) {
+      return res.status(400).json({ message: "Error: cart not added" });
+    }
+    res.json({ message: "Cart added" });
+  } catch (error) {
+    console.error("Error adding cart:", error);
+    res.status(500).send("Internal Server Error");
   }
-  res.send({ message: "Cart added" });
 });
 
 cartsRouter.get("/:cid", async (req, res) => {
-  const { cId } = req.params;
-  const cartById = await cartManager.getCartById(cId);
-  if (!cartById) {
-    res.status(404).send({ message: "cart not found" });
+  const cartId = req.params.cid;
+  try {
+    const cartById = await cartManager.getCartById(cartId);
+    if (!cartById) {
+      res.status(404).json({ message: "Cart not found" });
+    }
+    res.json(cartById);
+  } catch (error) {
+    console.error("Error getting cart by ID:", error);
+    res.status(500).send("Internal Server Error");
   }
-  res.send(cartById);
 });
 
 cartsRouter.post("/:cid/product/:pid", async (req, res) => {
   const cartId = parseInt(req.params.cid);
   const productId = parseInt(req.params.pid);
-  const productAddedToCart = await cartManager.addProductToCart(
-    productId,
-    cartId
-  );
+  try {
+    const productAddedToCart = await cartManager.addProductToCart(productId, cartId);
 
-  if (!productAddedToCart) {
-    return res.status(400).send({ message: "error: product not added" });
+    if (!productAddedToCart) {
+      return res.status(400).json({ message: "Error: product not added to cart" });
+    }
+    res.json({ message: "Product added to cart" });
+  } catch (error) {
+    console.error("Error adding product to cart:", error);
+    res.status(500).send("Internal Server Error");
   }
-  res.send({ message: "product added to cart" });
-  // const { quantity = 1 } = req.body;
-
-  // try {
-  //   const cart = await cartManager.getCart(cartId);
-
-  //   if (cart) {
-  //     const existingProductIndex = cart.products.findIndex(
-  //       (p) => p.product === productId
-  //     );
-
-  //     if (existingProductIndex !== -1) {
-  //       cart.products[existingProductIndex].quantity += quantity;
-  //     } else {
-  //       cart.products.push({ product: productId, quantity });
-  //     }
-
-  //     await cartManager.updateCart(cart);
-  //     res.status(201).send(cart.products);
-  //   } else {
-  //     res.status(404).send("Carrito no encontrado");
-  //   }
-  // } catch (error) {
-  //   res.status(500).send("Error actualizando carrito");
-  // }
 });
 
 export default cartsRouter;
